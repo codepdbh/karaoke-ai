@@ -28,11 +28,22 @@ type LyricsEditorProps = {
   versionId: string;
 };
 
+const LYRICS_STATUS_LABELS: Record<string, string> = {
+  draft: "borrador",
+  reviewed: "revisada",
+  published: "publicada",
+  deprecated: "obsoleta"
+};
+
+function translateLyricsStatus(status: string) {
+  return LYRICS_STATUS_LABELS[status] ?? status;
+}
+
 export function LyricsEditor({ versionId }: LyricsEditorProps) {
   const { token } = useAuthStore();
   const [songId, setSongId] = useState<number>(demoLyrics.song_id);
   const [lines, setLines] = useState<EditableLine[]>(demoLyrics.lines);
-  const [versionName, setVersionName] = useState("Edited version");
+  const [versionName, setVersionName] = useState("Version editada");
   const [statusLabel, setStatusLabel] = useState("draft");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -95,7 +106,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
 
   const saveVersion = async () => {
     if (!token) {
-      setMessage("You need an active session to save changes.");
+      setMessage("Necesitas una sesion activa para guardar cambios.");
       return;
     }
     try {
@@ -104,42 +115,42 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
         lines
       });
       setStatusLabel(updated.status);
-      setMessage("Lyrics version saved.");
+      setMessage("Version de letra guardada.");
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Could not save lyrics version.");
+      setMessage(error instanceof ApiError ? error.message : "No se pudo guardar la version.");
     }
   };
 
   const saveNewVersion = async () => {
     if (!token) {
-      setMessage("You need an active session to create a new version.");
+      setMessage("Necesitas una sesion activa para crear una nueva version.");
       return;
     }
     try {
       const created = await apiClient.saveLyricsVersion(token, songId, {
-        version_name: `${versionName} copy`,
+        version_name: `${versionName} copia`,
         source_type: "manual",
         source_provider: "manual",
         status: "draft",
         lines
       });
-      setMessage(`New version created as #${created.id}.`);
+      setMessage(`Nueva version creada como #${created.id}.`);
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Could not create a new version.");
+      setMessage(error instanceof ApiError ? error.message : "No se pudo crear una nueva version.");
     }
   };
 
   const publishVersion = async () => {
     if (!token) {
-      setMessage("You need an active session to publish.");
+      setMessage("Necesitas una sesion activa para publicar.");
       return;
     }
     try {
       const updated = await apiClient.publishLyricsVersion(token, versionId);
       setStatusLabel(updated.status);
-      setMessage("Lyrics version published.");
+      setMessage("Version de letra publicada.");
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Could not publish lyrics version.");
+      setMessage(error instanceof ApiError ? error.message : "No se pudo publicar la version.");
     }
   };
 
@@ -149,12 +160,15 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/40">Lyrics editor</p>
-              <StatusBadge label={statusLabel} />
+              <p className="text-xs uppercase tracking-[0.24em] text-white/40">Editor de letras</p>
+              <StatusBadge
+                label={statusLabel}
+                displayLabel={translateLyricsStatus(statusLabel)}
+              />
             </div>
             <h3 className="mt-3 text-3xl font-semibold text-white">Version #{versionId}</h3>
             <p className="mt-3 text-sm text-white/60">
-              Song #{songId} | Total synced length {totalDuration.toFixed(2)} sec
+              Cancion #{songId} | Largo total sincronizado {totalDuration.toFixed(2)} seg
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -174,19 +188,19 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
               onClick={saveVersion}
               className="rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400"
             >
-              Save changes
+              Guardar cambios
             </button>
             <button
               onClick={saveNewVersion}
               className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition hover:bg-white/[0.04]"
             >
-              Save new version
+              Guardar como nueva version
             </button>
             <button
               onClick={publishVersion}
               className="rounded-2xl border border-neon-500/30 bg-neon-500/10 px-4 py-3 text-sm text-white transition hover:bg-neon-500/15"
             >
-              Publish
+              Publicar
             </button>
           </div>
         </div>
@@ -196,7 +210,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
       <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
         <label className="block">
           <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/40">
-            Version name
+            Nombre de version
           </span>
           <input
             value={versionName}
@@ -212,7 +226,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
             <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr]">
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/35">
-                  Line text
+                  Texto de la linea
                 </span>
                 <input
                   value={line.text}
@@ -222,7 +236,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
               </label>
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/35">
-                  Start
+                  Inicio
                 </span>
                 <input
                   type="number"
@@ -236,7 +250,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
               </label>
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/35">
-                  End
+                  Fin
                 </span>
                 <input
                   type="number"

@@ -1,5 +1,6 @@
 type StatusBadgeProps = {
   label: string;
+  displayLabel?: string;
 };
 
 const colorMap: Record<string, string> = {
@@ -13,12 +14,11 @@ const colorMap: Record<string, string> = {
   failed: "bg-rose-500/15 text-rose-300 ring-rose-500/30"
 };
 
-export function StatusBadge({ label }: StatusBadgeProps) {
+export function StatusBadge({ label, displayLabel }: StatusBadgeProps) {
   const styles = colorMap[label] ?? "bg-white/10 text-white/70 ring-white/10";
   return (
     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ring-1 ${styles}`}>
-      {label}
+      {displayLabel ?? label}
     </span>
   );
 }
-

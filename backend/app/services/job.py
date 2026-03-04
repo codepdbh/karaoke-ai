@@ -29,13 +29,20 @@ class JobService:
     def get_or_404(self, job_id: int) -> Job:
         job = self.jobs.get(job_id)
         if not job:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajo no encontrado")
         return job
 
     def create_song_processing_job(self, song_id: int) -> Job:
         song = self.songs.get(song_id)
         if not song:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Song not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cancion no encontrada")
+
+        active_job = self.jobs.get_active_song_process_job(song_id)
+        if active_job:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"La cancion ya tiene un trabajo activo #{active_job.id}",
+            )
 
         song.status = SongStatus.processing
         job = Job(
@@ -51,4 +58,3 @@ class JobService:
         self.session.refresh(job)
         self.celery_client.send_task("workers.process_song", args=[job.id, song_id])
         return job
-

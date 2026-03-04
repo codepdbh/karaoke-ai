@@ -39,23 +39,41 @@ def process_song(job_id: int, song_id: int) -> dict:
 
     try:
         with session_scope() as session:
-            update_job(
-                session,
-                job_id=job_id,
+            def push_progress(
+                *,
+                progress_percent: int,
+                current_step: str,
+                status: JobStatus | None = None,
+                error_message: str | None = None,
+                result_json: dict | None = None,
+            ) -> None:
+                update_job(
+                    session,
+                    job_id=job_id,
+                    status=status,
+                    progress_percent=progress_percent,
+                    current_step=current_step,
+                    error_message=error_message,
+                    result_json=result_json,
+                )
+                session.commit()
+
+            mark_song_status(session, song_id=song_id, status=SongStatus.processing)
+            push_progress(
                 status=JobStatus.running,
                 progress_percent=5,
                 current_step="loading-song",
                 error_message=None,
             )
-            mark_song_status(session, song_id=song_id, status=SongStatus.processing)
             song, original_file = get_song_with_original_file(session, song_id)
             original_path = storage.resolve(original_file.storage_path)
 
+            push_progress(progress_percent=12, current_step="metadata")
             metadata = extract_metadata(original_path)
             song.duration_seconds = metadata["duration_seconds"]
             song.language = song.language or metadata["detected_language"]
 
-            update_job(session, job_id=job_id, progress_percent=20, current_step="waveform")
+            push_progress(progress_percent=22, current_step="waveform")
             waveform_export = export_waveform(song_id, build_waveform_points())
             upsert_song_file(
                 session,
@@ -67,7 +85,7 @@ def process_song(job_id: int, song_id: int) -> dict:
                 checksum=waveform_export["checksum"],
             )
 
-            update_job(session, job_id=job_id, progress_percent=40, current_step="separation")
+            push_progress(progress_percent=38, current_step="separation")
             stems_dir = settings.storage_root_path / f"songs/{song_id}/stems"
             stems = separate_stems(original_path, stems_dir)
             for stem_name, file_type in {
@@ -86,14 +104,14 @@ def process_song(job_id: int, song_id: int) -> dict:
                     checksum=None,
                 )
 
-            update_job(session, job_id=job_id, progress_percent=60, current_step="transcription")
+            push_progress(progress_percent=62, current_step="transcription")
             transcript = transcribe_vocals(stems["vocals"], language=song.language)
 
-            update_job(session, job_id=job_id, progress_percent=75, current_step="alignment")
+            push_progress(progress_percent=78, current_step="alignment")
             aligned = align_transcript(stems["vocals"], transcript)
             lines = build_lines_payload(aligned)
 
-            update_job(session, job_id=job_id, progress_percent=85, current_step="comparison")
+            push_progress(progress_percent=88, current_step="comparison")
             reference = compare_with_reference(song.title, song.artist)
 
             version = LyricsService(session).create_version(
@@ -110,7 +128,7 @@ def process_song(job_id: int, song_id: int) -> dict:
                 user_id=song.created_by,
             )
 
-            update_job(session, job_id=job_id, progress_percent=95, current_step="export")
+            push_progress(progress_percent=94, current_step="export")
             exported = export_lyrics_assets(song_id, version.id, version.language, lines)
             for file_type, file_key in {
                 SongFileType.lyrics_json: "lyrics_json",
@@ -128,9 +146,7 @@ def process_song(job_id: int, song_id: int) -> dict:
                 )
 
             mark_song_status(session, song_id=song_id, status=SongStatus.ready)
-            update_job(
-                session,
-                job_id=job_id,
+            push_progress(
                 status=JobStatus.completed,
                 progress_percent=100,
                 current_step="completed",
