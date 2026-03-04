@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KaraokeAiLyrics",
+  "type": "object",
+  "required": ["song_id", "language", "version_id", "lines"],
+  "properties": {
+    "song_id": { "type": "integer" },
+    "language": { "type": "string" },
+    "version_id": { "type": "integer" },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["line_index", "text", "start", "end", "confidence", "words"],
+        "properties": {
+          "line_index": { "type": "integer" },
+          "text": { "type": "string" },
+          "start": { "type": "number" },
+          "end": { "type": "number" },
+          "confidence": { "type": "number" },
+          "words": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["word_index", "text", "start", "end", "confidence"],
+              "properties": {
+                "word_index": { "type": "integer" },
+                "text": { "type": "string" },
+                "start": { "type": "number" },
+                "end": { "type": "number" },
+                "confidence": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

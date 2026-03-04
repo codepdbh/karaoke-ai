@@ -1,0 +1,15 @@
+celery[redis]==5.4.0
+redis==5.2.1
+fastapi==0.115.8
+sqlalchemy==2.0.48
+pydantic==2.12.5
+pydantic-settings==2.12.0
+psycopg[binary]==3.3.3
+orjson==3.11.7
+audio-separator==0.41.1
+faster-whisper==1.2.1
+
+# WhisperX is intentionally not pinned here for Python 3.13/3.14 because its current release
+# forces faster-whisper==1.0.0, which in turn pulls a tokenizers build that often falls back
+# to a Rust compile on Windows. The project already falls back to faster-whisper word timestamps
+# when WhisperX is not installed.

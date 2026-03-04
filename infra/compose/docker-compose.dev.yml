@@ -1,0 +1,133 @@
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/frontend.Dockerfile
+    working_dir: /app/frontend
+    command: sh -lc "npm install && npm run dev -- --hostname 0.0.0.0"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_BASE_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../:/app
+      - frontend_node_modules:/app/frontend/node_modules
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    working_dir: /app
+    command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_NAME: karaoke-ai-api
+      APP_ENV: development
+      SECRET_KEY: change-me
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+      DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_MODE: local
+      LOCAL_STORAGE_ROOT: storage
+      MODEL_ROOT: models
+      FASTER_WHISPER_MODEL_DIR: models/faster-whisper
+      WHISPERX_MODEL_DIR: models/whisperx
+      SEPARATION_MODEL_DIR: models/audio-separator
+      ALLOW_MODEL_DOWNLOADS: "false"
+      EXTERNAL_LYRICS_PROVIDER: none
+      LRCLIB_BASE_URL: https://lrclib.net/api
+      CORS_ORIGINS: http://localhost:3000
+      MAX_UPLOAD_SIZE_MB: 100
+      PYTHONPATH: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../:/app
+      - ../../storage:/app/storage
+      - ../../models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  workers:
+    build:
+      context: ../..
+      dockerfile: infra/docker/workers.Dockerfile
+    working_dir: /app
+    command: python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info
+    environment:
+      APP_NAME: karaoke-ai-worker
+      APP_ENV: development
+      SECRET_KEY: change-me
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+      DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_MODE: local
+      LOCAL_STORAGE_ROOT: storage
+      MODEL_ROOT: models
+      FASTER_WHISPER_MODEL_DIR: models/faster-whisper
+      WHISPERX_MODEL_DIR: models/whisperx
+      SEPARATION_MODEL_DIR: models/audio-separator
+      ALLOW_MODEL_DOWNLOADS: "false"
+      EXTERNAL_LYRICS_PROVIDER: none
+      LRCLIB_BASE_URL: https://lrclib.net/api
+      PYTHONPATH: /app
+    volumes:
+      - ../../:/app
+      - ../../storage:/app/storage
+      - ../../models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: karaoke_ai
+      POSTGRES_USER: karaoke
+      POSTGRES_PASSWORD: karaoke
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karaoke -d karaoke_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # minio:
+  #   image: minio/minio:latest
+  #   command: server /data --console-address ":9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minio
+  #     MINIO_ROOT_PASSWORD: miniostorage
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   volumes:
+  #     - minio_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  frontend_node_modules:
+  # minio_data:

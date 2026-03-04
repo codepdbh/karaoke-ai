@@ -1,0 +1,19 @@
+{
+  "song_id": 1,
+  "language": "es",
+  "version_id": 10,
+  "lines": [
+    {
+      "line_index": 0,
+      "text": "Hoy te voy a contar",
+      "start": 12.14,
+      "end": 16.88,
+      "confidence": 0.96,
+      "words": [
+        { "word_index": 0, "text": "Hoy", "start": 12.14, "end": 12.48, "confidence": 0.97 },
+        { "word_index": 1, "text": "te", "start": 12.49, "end": 12.62, "confidence": 0.96 }
+      ]
+    }
+  ]
+}
+
