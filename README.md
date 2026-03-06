@@ -224,12 +224,17 @@ python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Terminal 2: worker
 
-En Windows, usa `-P solo`. Es la forma estable para Celery en este proyecto.
+Por defecto el worker esta configurado para procesar hasta 3 canciones en paralelo (`threads`, `concurrency=3`).
+Puedes cambiarlo por variables de entorno:
+
+- `CELERY_WORKER_POOL` (ej. `threads`)
+- `CELERY_WORKER_CONCURRENCY` (ej. `3`)
+- `CELERY_WORKER_PREFETCH_MULTIPLIER` (ej. `1`)
 
 ```powershell
 Set-Location C:\Users\Sistemas\Documents\karaoke-ai
 .\.venv\Scripts\Activate.ps1
-python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info -P solo
+python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info --pool=threads --concurrency=3
 ```
 
 ### Terminal 3: frontend
@@ -478,10 +483,10 @@ python -m backend.scripts.bootstrap_models --download
 
 ### Celery en Windows falla con `PermissionError`
 
-Usa siempre:
+Evita `prefork` y usa `threads`:
 
 ```powershell
-python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info -P solo
+python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info --pool=threads --concurrency=3
 ```
 
 ### `whisperx` sale como `MISSING`

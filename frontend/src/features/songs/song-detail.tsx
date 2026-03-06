@@ -128,36 +128,36 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-3">
               <p className="text-xs uppercase tracking-[0.24em] text-white/40">Detalle de cancion</p>
               <StatusBadge label={song.status} displayLabel={translateSongStatus(song.status)} />
             </div>
-            <h3 className="mt-3 text-3xl font-semibold text-white">{song.title}</h3>
+            <h3 className="mt-3 break-words text-2xl font-semibold text-white sm:text-3xl">{song.title}</h3>
             <p className="mt-3 text-sm text-white/60">
               {song.artist ?? "Artista desconocido"} | {song.album ?? "Sin album"} |{" "}
               {song.language ?? "Idioma pendiente"}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid w-full gap-3 sm:grid-cols-2 xl:w-auto xl:grid-cols-3">
             <button
               onClick={triggerProcess}
               disabled={queueing || song.status === "processing"}
-              className="rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {processButtonLabel}
             </button>
             <Link
               href={`/player/${songId}`}
-              className="rounded-2xl border border-white/10 px-4 py-3 text-center text-sm text-white/80 transition hover:bg-white/[0.04]"
+              className="w-full rounded-2xl border border-white/10 px-4 py-3 text-center text-sm text-white/80 transition hover:bg-white/[0.04]"
             >
               Abrir reproductor
             </Link>
             <Link
               href={versions[0] ? `/lyrics/${versions[0].id}` : "#"}
-              className={`rounded-2xl border border-white/10 px-4 py-3 text-center text-sm transition ${
+              className={`w-full rounded-2xl border border-white/10 px-4 py-3 text-center text-sm transition ${
                 versions[0]
                   ? "text-white/80 hover:bg-white/[0.04]"
                   : "cursor-not-allowed text-white/35"
@@ -171,7 +171,7 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
           <h4 className="text-lg font-semibold text-white">Metadatos</h4>
           <dl className="mt-5 space-y-4 text-sm">
             <div>
@@ -195,7 +195,7 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
           </dl>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
           <h4 className="text-lg font-semibold text-white">Versiones de letra</h4>
           <div className="mt-4 space-y-3">
             {versions.length === 0 ? (
@@ -207,7 +207,7 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
                 <Link
                   key={version.id}
                   href={`/lyrics/${version.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition hover:bg-black/30"
+                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition hover:bg-black/30 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="text-sm font-medium text-white">{version.version_name}</p>

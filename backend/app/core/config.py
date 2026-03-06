@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     lrclib_base_url: str = "https://lrclib.net/api"
     cors_origins: str = "http://localhost:3000"
     max_upload_size_mb: int = 100
+    celery_worker_pool: str = "threads"
+    celery_worker_concurrency: int = 3
+    celery_worker_prefetch_multiplier: int = 1
 
     model_config = SettingsConfigDict(
         env_file=("backend/.env", ".env"),

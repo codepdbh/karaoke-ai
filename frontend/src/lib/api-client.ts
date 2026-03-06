@@ -17,6 +17,12 @@ type RequestOptions = RequestInit & {
   token?: string | null;
 };
 
+type UploadRequestOptions = {
+  token?: string | null;
+  body: FormData;
+  onUploadProgress?: (percent: number) => void;
+};
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
@@ -45,6 +51,57 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   return response.json() as Promise<T>;
+}
+
+function uploadRequest<T>(path: string, options: UploadRequestOptions): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}${path}`, true);
+    xhr.setRequestHeader("Accept", "application/json");
+
+    if (options.token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${options.token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !options.onUploadProgress) {
+        return;
+      }
+      const percent = Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      options.onUploadProgress(percent);
+    };
+
+    xhr.onerror = () => {
+      reject(new ApiError("Network error", xhr.status || 0));
+    };
+
+    xhr.onload = () => {
+      const raw = xhr.responseText ?? "";
+      let payload: Record<string, unknown> | null = null;
+
+      if (raw) {
+        try {
+          payload = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          payload = null;
+        }
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload as T);
+        return;
+      }
+
+      const detail =
+        (payload?.detail as string | undefined) ??
+        (payload?.message as string | undefined) ??
+        xhr.statusText ??
+        "Request failed";
+      reject(new ApiError(detail, xhr.status || 0));
+    };
+
+    xhr.send(options.body);
+  });
 }
 
 export const apiClient = {
@@ -92,7 +149,8 @@ export const apiClient = {
   uploadSong: async (
     token: string,
     file: File,
-    metadata: { title?: string; artist?: string; album?: string; language?: string }
+    metadata: { title?: string; artist?: string; album?: string; language?: string },
+    onUploadProgress?: (percent: number) => void
   ) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -101,11 +159,11 @@ export const apiClient = {
         formData.append(key, value);
       }
     });
-    return request<Song>("/api/v1/uploads/song", {
-      method: "POST",
+
+    return uploadRequest<Song>("/api/v1/uploads/song", {
       token,
-      body: formData
+      body: formData,
+      onUploadProgress
     });
   }
 };
-

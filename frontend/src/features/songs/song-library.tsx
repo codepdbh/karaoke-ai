@@ -47,8 +47,27 @@ export function SongLibrary() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-white/10">
-        <table className="min-w-full bg-black/20 text-sm">
+      <div className="space-y-3 md:hidden">
+        {songs.map((song) => (
+          <article key={song.id} className="rounded-3xl border border-white/10 bg-black/20 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-white">{song.title}</p>
+                <p className="mt-1 text-sm text-white/65">{song.artist ?? "Pendiente"}</p>
+              </div>
+              <StatusBadge label={song.status} displayLabel={translateSongStatus(song.status)} />
+            </div>
+            <div className="mt-4 flex items-center justify-end">
+              <Link href={`/songs/${song.id}`} className="text-sm text-accent-400 transition hover:text-accent-500">
+                Abrir
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-3xl border border-white/10 md:block">
+        <table className="min-w-[680px] bg-black/20 text-sm">
           <thead className="bg-white/[0.04] text-white/45">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Titulo</th>

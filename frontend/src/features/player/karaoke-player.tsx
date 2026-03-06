@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { demoLyrics } from "@/lib/demo-data";
 import { useAuthStore } from "@/store/auth-store";
-import type { LyricsPayload } from "@/types/api";
+import type { LyricsPayload, SongDetail } from "@/types/api";
 
 type StemTrack = "original" | "instrumental" | "vocals";
 type PlaybackMode = "mix" | StemTrack;
@@ -37,6 +37,7 @@ function formatTime(seconds: number) {
 export function KaraokePlayer({ songId }: KaraokePlayerProps) {
   const { token } = useAuthStore();
   const [lyrics, setLyrics] = useState<LyricsPayload>(demoLyrics);
+  const [songDetail, setSongDetail] = useState<SongDetail | null>(null);
   const [audioSources, setAudioSources] = useState<AudioSources>(EMPTY_AUDIO_SOURCES);
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("mix");
   const [currentTime, setCurrentTime] = useState(0);
@@ -101,6 +102,20 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
     }
     apiClient.getLyrics(token, songId).then(setLyrics).catch(() => undefined);
   }, [songId, token]);
+
+  useEffect(() => {
+    if (!token) {
+      setSongDetail(null);
+      return;
+    }
+
+    apiClient.getSong(token, songId).then(setSongDetail).catch(() => undefined);
+  }, [songId, token]);
+
+  useEffect(() => {
+    const title = songDetail?.title?.trim();
+    document.title = title ? `${title} - Karaoke AI` : "Karaoke AI";
+  }, [songDetail?.title]);
 
   useEffect(() => {
     if (!token) {
@@ -343,12 +358,17 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
   const mixReady = Boolean(audioSources.instrumental || audioSources.vocals);
   const primaryLabel =
     playbackMode === "mix" ? "vocal + instrumental" : playbackMode;
+  const songTitle = songDetail?.title?.trim() || `Cancion #${songId}`;
+  const songArtist = songDetail?.artist?.trim() || "Artista pendiente";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+    <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <p className="text-xs uppercase tracking-[0.24em] text-white/40">Player</p>
-        <h3 className="mt-3 text-3xl font-semibold text-white">Karaoke playback</h3>
+        <h3 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Karaoke playback</h3>
+        <p className="mt-2 text-sm text-white/60">
+          {songTitle} | {songArtist}
+        </p>
         <div className="mt-6 flex flex-wrap gap-3">
           {(["mix", "original", "instrumental", "vocals"] as PlaybackMode[]).map((mode) => (
             <button
@@ -366,7 +386,7 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
           ))}
         </div>
 
-        <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-black/25 p-6">
+        <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-black/25 p-4 sm:p-6">
           <div className="mb-6 h-32 rounded-3xl bg-[linear-gradient(90deg,rgba(249,115,22,0.25)_0%,rgba(34,211,238,0.2)_100%)] p-4">
             <div className="flex h-full items-end gap-2">
               {lyrics.lines.slice(0, 14).map((line) => (
@@ -473,15 +493,15 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
         />
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-        <div className="flex items-center justify-between">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-white/40">Lyrics</p>
             <h4 className="mt-2 text-xl font-semibold text-white">Synced lines</h4>
           </div>
           <p className="text-xs uppercase tracking-[0.24em] text-white/35">Auto scroll live</p>
         </div>
-        <div ref={lyricsViewportRef} className="mt-5 max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+        <div ref={lyricsViewportRef} className="mt-5 max-h-[24rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[32rem]">
           {lyrics.lines.map((line, index) => {
             const active = index === activeLineIndex;
             return (
@@ -496,7 +516,7 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
                     : "border-white/10 bg-black/20"
                 }`}
               >
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center sm:gap-4">
                   <p className={`text-base ${active ? "text-white" : "text-white/72"}`}>{line.text}</p>
                   <p className="text-xs text-white/35">
                     {line.start.toFixed(2)} - {line.end.toFixed(2)}

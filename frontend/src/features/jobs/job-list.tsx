@@ -62,8 +62,8 @@ export function JobList() {
             className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.05]"
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
                   <p className="text-sm font-semibold text-white">Trabajo #{job.id}</p>
                   <StatusBadge label={job.status} displayLabel={translateJobStatus(job.status)} />
                 </div>
@@ -74,7 +74,7 @@ export function JobList() {
                   {translateJobStep(job.current_step)}
                 </p>
               </div>
-              <div className="w-full max-w-md">
+              <div className="w-full md:max-w-md">
                 <div className="flex items-center justify-between text-xs text-white/45">
                   <span>Progreso</span>
                   <span>{job.progress_percent}%</span>

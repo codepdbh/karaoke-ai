@@ -53,10 +53,10 @@ export function DashboardOverview() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Songs" value={String(songs.length)} hint="Biblioteca lista para procesar." />
-        <StatCard label="Jobs" value={String(jobs.length)} hint="Ejecuciones recientes y en cola." />
+        <StatCard label="Canciones" value={String(songs.length)} hint="Biblioteca lista para procesar." />
+        <StatCard label="Procesos" value={String(jobs.length)} hint="Ejecuciones recientes y en cola." />
         <StatCard
-          label="Ready"
+          label="Listas"
           value={String(songs.filter((song) => song.status === "ready").length)}
           hint="Canciones listas para karaoke."
         />
@@ -67,9 +67,9 @@ export function DashboardOverview() {
           <h3 className="text-lg font-semibold text-white">Canciones recientes</h3>
           <div className="mt-4 space-y-3">
             {songs.slice(0, 5).map((song) => (
-              <div key={song.id} className="flex items-center justify-between rounded-2xl bg-black/20 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-white">{song.title}</p>
+              <div key={song.id} className="flex items-center justify-between gap-3 rounded-2xl bg-black/20 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-white">{song.title}</p>
                   <p className="text-xs text-white/45">{song.artist ?? "Artista pendiente"}</p>
                 </div>
                 <StatusBadge label={song.status} />
@@ -83,11 +83,11 @@ export function DashboardOverview() {
           <div className="mt-4 space-y-3">
             {jobs.slice(0, 5).map((job) => (
               <div key={job.id} className="rounded-2xl bg-black/20 px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-white">Job #{job.id}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-white">Trabajo #{job.id}</p>
                   <StatusBadge label={job.status} />
                 </div>
-                <p className="mt-2 text-xs text-white/45">{job.current_step ?? "pending"}</p>
+                <p className="mt-2 text-xs text-white/45">{job.current_step ?? "pendiente"}</p>
                 <div className="mt-3 h-2 rounded-full bg-white/5">
                   <div
                     className="h-2 rounded-full bg-gradient-to-r from-accent-500 to-neon-500"

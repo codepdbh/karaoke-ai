@@ -156,49 +156,49 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="text-xs uppercase tracking-[0.24em] text-white/40">Editor de letras</p>
               <StatusBadge
                 label={statusLabel}
                 displayLabel={translateLyricsStatus(statusLabel)}
               />
             </div>
-            <h3 className="mt-3 text-3xl font-semibold text-white">Version #{versionId}</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Version #{versionId}</h3>
             <p className="mt-3 text-sm text-white/60">
               Cancion #{songId} | Largo total sincronizado {totalDuration.toFixed(2)} seg
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
             <button
               onClick={() => applyOffset(-0.1)}
-              className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04]"
+              className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Offset -0.10
             </button>
             <button
               onClick={() => applyOffset(0.1)}
-              className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04]"
+              className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Offset +0.10
             </button>
             <button
               onClick={saveVersion}
-              className="rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400"
+              className="w-full rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400 sm:w-auto"
             >
               Guardar cambios
             </button>
             <button
               onClick={saveNewVersion}
-              className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition hover:bg-white/[0.04]"
+              className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Guardar como nueva version
             </button>
             <button
               onClick={publishVersion}
-              className="rounded-2xl border border-neon-500/30 bg-neon-500/10 px-4 py-3 text-sm text-white transition hover:bg-neon-500/15"
+              className="w-full rounded-2xl border border-neon-500/30 bg-neon-500/10 px-4 py-3 text-sm text-white transition hover:bg-neon-500/15 sm:w-auto"
             >
               Publicar
             </button>
@@ -207,7 +207,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
         {message ? <p className="mt-4 text-sm text-white/70">{message}</p> : null}
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <label className="block">
           <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/40">
             Nombre de version
@@ -222,7 +222,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
 
       <section className="space-y-4">
         {lines.map((line) => (
-          <div key={line.line_index} className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+          <div key={line.line_index} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
             <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr_0.6fr]">
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.24em] text-white/35">

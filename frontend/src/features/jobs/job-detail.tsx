@@ -51,22 +51,22 @@ export function JobDetail({ jobId }: JobDetailProps) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="text-xs uppercase tracking-[0.24em] text-white/40">Detalle del trabajo</p>
               <StatusBadge
                 label={resolvedJob.status}
                 displayLabel={translateJobStatus(resolvedJob.status)}
               />
             </div>
-            <h3 className="mt-3 text-3xl font-semibold text-white">Trabajo #{resolvedJob.id}</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Trabajo #{resolvedJob.id}</h3>
             <p className="mt-3 text-sm text-white/60">
               Cancion #{resolvedJob.song_id ?? "-"} | {translateJobType(resolvedJob.job_type)}
             </p>
           </div>
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/20 p-5">
+          <div className="w-full rounded-3xl border border-white/10 bg-black/20 p-5 md:max-w-md">
             <div className="flex items-center justify-between text-xs text-white/45">
               <span>Progreso</span>
               <span>{resolvedJob.progress_percent}%</span>
@@ -83,7 +83,7 @@ export function JobDetail({ jobId }: JobDetailProps) {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
           <h4 className="text-lg font-semibold text-white">Pasos del pipeline</h4>
           <div className="mt-5 space-y-3">
             {PIPELINE_STEPS.map((step, index) => {
@@ -104,7 +104,7 @@ export function JobDetail({ jobId }: JobDetailProps) {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
           <h4 className="text-lg font-semibold text-white">Diagnostico</h4>
           <dl className="mt-5 space-y-4 text-sm">
             <div>

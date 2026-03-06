@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from celery import Celery
 
 from backend.app.core.config import get_settings, validate_model_layout
@@ -18,14 +16,16 @@ celery_app.conf.update(
     timezone="UTC",
     task_track_started=True,
     broker_connection_retry_on_startup=True,
+    worker_pool=settings.celery_worker_pool,
+    worker_concurrency=settings.celery_worker_concurrency,
+    worker_prefetch_multiplier=settings.celery_worker_prefetch_multiplier,
 )
-
-if os.name == "nt":
-    celery_app.conf.update(
-        worker_pool="solo",
-        worker_concurrency=1,
-    )
-    logger.info("Windows detected: Celery worker pool forced to 'solo'.")
+logger.info(
+    "Celery worker configured with pool='%s', concurrency=%s, prefetch_multiplier=%s.",
+    settings.celery_worker_pool,
+    settings.celery_worker_concurrency,
+    settings.celery_worker_prefetch_multiplier,
+)
 
 missing = [name for name, ok in validate_model_layout(settings).items() if not ok]
 if missing:
