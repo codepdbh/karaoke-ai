@@ -52,7 +52,7 @@ def create_lyrics_version(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> LyricsVersionRead:
-    version = LyricsService(db).create_version(song_id, payload, current_user.id)
+    version = LyricsService(db).create_version(song_id, payload, current_user)
     return LyricsVersionRead.model_validate(version)
 
 
@@ -61,9 +61,9 @@ def update_lyrics_version(
     version_id: int,
     payload: LyricsVersionUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> LyricsVersionRead:
-    version = LyricsService(db).update_version(version_id, payload)
+    version = LyricsService(db).update_version(version_id, payload, current_user)
     return LyricsVersionRead.model_validate(version)
 
 
@@ -71,7 +71,7 @@ def update_lyrics_version(
 def publish_lyrics_version(
     version_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> LyricsVersionRead:
-    version = LyricsService(db).publish(version_id)
+    version = LyricsService(db).publish(version_id, current_user)
     return LyricsVersionRead.model_validate(version)

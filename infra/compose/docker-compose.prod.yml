@@ -1,0 +1,187 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../docker/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../../infra/certbot/www:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+      - ruta_frontend
+      - ruta_backend
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/frontend.prod.Dockerfile
+      args:
+        NEXT_PUBLIC_APP_BASE_PATH: /karaoke-ia
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_BASE_PATH: /karaoke-ia
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.prod.Dockerfile
+    environment:
+      APP_NAME: karaoke-ai-api
+      APP_ENV: production
+      SECRET_KEY: ${KARAOKE_SECRET_KEY:?set KARAOKE_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 43200
+      DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_MODE: local
+      LOCAL_STORAGE_ROOT: storage
+      MODEL_ROOT: models
+      FASTER_WHISPER_MODEL_DIR: models/faster-whisper
+      FASTER_WHISPER_MODEL_NAME: small
+      FASTER_WHISPER_DEVICE: cpu
+      FASTER_WHISPER_COMPUTE_TYPE: int8
+      FASTER_WHISPER_BEAM_SIZE: 5
+      WHISPERX_MODEL_DIR: models/whisperx
+      WHISPERX_DEVICE: cpu
+      WHISPERX_DEFAULT_ALIGN_LANGUAGE: es
+      SEPARATION_MODEL_DIR: models/audio-separator
+      SEPARATION_MODEL_FILENAME: UVR-MDX-NET-Inst_HQ_4.onnx
+      SEPARATION_OUTPUT_FORMAT: wav
+      STREAM_AUDIO_BITRATE: 192k
+      ALLOW_MODEL_DOWNLOADS: "false"
+      EXTERNAL_LYRICS_PROVIDER: none
+      LRCLIB_BASE_URL: https://lrclib.net/api
+      CORS_ORIGINS: https://rutasingluten.lat,https://www.rutasingluten.lat
+      MAX_UPLOAD_SIZE_MB: 100
+    volumes:
+      - ../../storage:/app/storage
+      - ../../models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  workers:
+    build:
+      context: ../..
+      dockerfile: infra/docker/workers.prod.Dockerfile
+    environment:
+      APP_NAME: karaoke-ai-worker
+      APP_ENV: production
+      SECRET_KEY: ${KARAOKE_SECRET_KEY:?set KARAOKE_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 43200
+      DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_MODE: local
+      LOCAL_STORAGE_ROOT: storage
+      MODEL_ROOT: models
+      FASTER_WHISPER_MODEL_DIR: models/faster-whisper
+      FASTER_WHISPER_MODEL_NAME: small
+      FASTER_WHISPER_DEVICE: cpu
+      FASTER_WHISPER_COMPUTE_TYPE: int8
+      FASTER_WHISPER_BEAM_SIZE: 5
+      WHISPERX_MODEL_DIR: models/whisperx
+      WHISPERX_DEVICE: cpu
+      WHISPERX_DEFAULT_ALIGN_LANGUAGE: es
+      SEPARATION_MODEL_DIR: models/audio-separator
+      SEPARATION_MODEL_FILENAME: UVR-MDX-NET-Inst_HQ_4.onnx
+      SEPARATION_OUTPUT_FORMAT: wav
+      STREAM_AUDIO_BITRATE: 192k
+      ALLOW_MODEL_DOWNLOADS: "false"
+      EXTERNAL_LYRICS_PROVIDER: none
+      LRCLIB_BASE_URL: https://lrclib.net/api
+      CELERY_WORKER_POOL: threads
+      CELERY_WORKER_CONCURRENCY: 1
+      CELERY_WORKER_PREFETCH_MULTIPLIER: 1
+    volumes:
+      - ../../storage:/app/storage
+      - ../../models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: karaoke_ai
+      POSTGRES_USER: karaoke
+      POSTGRES_PASSWORD: karaoke
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karaoke -d karaoke_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  ruta_frontend:
+    build:
+      context: ../../../ruta-sin-gluten/frontend
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: /api
+    restart: unless-stopped
+
+  ruta_backend:
+    build:
+      context: ../../../ruta-sin-gluten/backend
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --dns-result-order=ipv4first
+      PORT: 4101
+      DATABASE_URL: postgresql://postgres:postgres@ruta_db:5432/rutasingluten?schema=public
+      JWT_SECRET: change-me-rutasingluten
+      UPLOAD_DIR: uploads
+      CORS_ORIGIN: https://rutasingluten.lat,https://www.rutasingluten.lat
+      PUBLIC_APP_URL: https://rutasingluten.lat
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Ruta Sin Gluten}
+    volumes:
+      - ruta_uploads:/app/uploads
+    depends_on:
+      ruta_db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ruta_db:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_DB: rutasingluten
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ruta_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rutasingluten"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  ruta_postgres_data:
+  ruta_uploads:

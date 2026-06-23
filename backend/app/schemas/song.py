@@ -34,3 +34,9 @@ class SongRead(ORMModel):
 class SongDetail(SongRead):
     files: list[SongFileRead]
 
+
+class SongUpdate(ORMModel):
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    language: str | None = None

@@ -29,8 +29,9 @@ class Settings(BaseSettings):
     whisperx_device: str = "cpu"
     whisperx_default_align_language: str = "es"
     separation_model_dir: str = "models/audio-separator"
-    separation_model_filename: str = "UVR_MDXNET_KARA_2.onnx"
+    separation_model_filename: str = "UVR-MDX-NET-Inst_HQ_4.onnx"
     separation_output_format: str = "wav"
+    stream_audio_bitrate: str = "192k"
     allow_model_downloads: bool = False
     external_lyrics_provider: str = "none"
     lrclib_base_url: str = "https://lrclib.net/api"

@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
-export function LoginForm() {
+export function AdminLoginForm() {
   const router = useRouter();
   const { setSession } = useAuthStore();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("D4niel123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,9 +20,9 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const response = await apiClient.login(email, password);
+      const response = await apiClient.adminLogin(email, password);
       setSession(response.access_token, response.user);
-      router.push("/dashboard");
+      router.push("/admin/users");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No fue posible iniciar sesion");
     } finally {
@@ -35,10 +35,10 @@ export function LoginForm() {
       onSubmit={onSubmit}
       className="w-full max-w-md rounded-[2rem] border border-white/10 bg-black/30 p-8 shadow-glow"
     >
-      <p className="text-xs uppercase tracking-[0.28em] text-white/45">Acceso</p>
-      <h1 className="mt-3 text-4xl font-semibold text-white">Entrar al estudio</h1>
+      <p className="text-xs uppercase tracking-[0.28em] text-white/45">Acceso admin</p>
+      <h1 className="mt-3 text-4xl font-semibold text-white">Entrar como administrador</h1>
       <p className="mt-3 text-sm text-white/60">
-        Ingresa tu correo y contrasena para continuar a tu sesion de karaoke.
+        Este acceso es exclusivo para cuentas locales con rol administrador.
       </p>
 
       <div className="mt-8 space-y-4">
@@ -68,7 +68,7 @@ export function LoginForm() {
         disabled={loading}
         className="mt-6 w-full rounded-2xl bg-accent-500 px-4 py-3 font-semibold text-black transition hover:bg-accent-400 disabled:opacity-60"
       >
-        {loading ? "Ingresando..." : "Iniciar sesion"}
+        {loading ? "Ingresando..." : "Iniciar sesion admin"}
       </button>
     </form>
   );

@@ -12,3 +12,11 @@ celery[redis]==5.4.0
 redis==5.2.1
 email-validator==2.2.0
 orjson==3.11.7
+httpx[http2]>=0.28.1
+aiofiles>=23.2.1
+tenacity>=8.3.0
+mutagen>=1.47.0
+pycryptodome>=3.20.0
+yt-dlp>=2024.04.09
+python-dotenv>=1.0.0
+tqdm>=4.66.0

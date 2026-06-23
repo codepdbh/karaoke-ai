@@ -1,8 +1,16 @@
 "use client";
 
-import type { Job, LyricsPayload, LyricsVersion, Song, SongDetail, User } from "@/types/api";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import type {
+  AdminUser,
+  Job,
+  LyricsPayload,
+  LyricsVersion,
+  MusicSearchResult,
+  Song,
+  SongDetail,
+  User
+} from "@/types/api";
+import { getApiBaseUrl } from "@/lib/runtime-urls";
 
 export class ApiError extends Error {
   status: number;
@@ -24,13 +32,14 @@ type UploadRequestOptions = {
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const apiBaseUrl = getApiBaseUrl();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.token) {
     headers.set("Authorization", `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     headers
   });
@@ -55,8 +64,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 function uploadRequest<T>(path: string, options: UploadRequestOptions): Promise<T> {
   return new Promise((resolve, reject) => {
+    const apiBaseUrl = getApiBaseUrl();
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE_URL}${path}`, true);
+    xhr.open("POST", `${apiBaseUrl}${path}`, true);
     xhr.setRequestHeader("Accept", "application/json");
 
     if (options.token) {
@@ -105,17 +115,67 @@ function uploadRequest<T>(path: string, options: UploadRequestOptions): Promise<
 }
 
 export const apiClient = {
-  login: (email: string, password: string) =>
+  registerUser: (email: string, firstName: string, lastName: string, password: string) =>
+    request<{ access_token: string; token_type: string; user: User }>("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, first_name: firstName, last_name: lastName, password })
+    }),
+  loginUser: (email: string, password: string) =>
     request<{ access_token: string; token_type: string; user: User }>("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     }),
+  adminLogin: (email: string, password: string) =>
+    request<{ access_token: string; token_type: string; user: User }>("/api/v1/auth/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    }),
   me: (token: string) => request<User>("/api/v1/auth/me", { token }),
+  listUsers: (token: string) => request<AdminUser[]>("/api/v1/admin/users", { token }),
+  updateUserCredits: (token: string, userId: number, creditsRemaining: number) =>
+    request<AdminUser>(`/api/v1/admin/users/${userId}/credits`, {
+      method: "PUT",
+      token,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credits_remaining: creditsRemaining })
+    }),
   getSongs: (token: string, query?: string) =>
     request<Song[]>(`/api/v1/songs${query ? `?q=${encodeURIComponent(query)}` : ""}`, { token }),
   getSong: (token: string, songId: string | number) =>
     request<SongDetail>(`/api/v1/songs/${songId}`, { token }),
+  updateSong: (
+    token: string,
+    songId: string | number,
+    payload: { title?: string; artist?: string; album?: string; language?: string }
+  ) =>
+    request<SongDetail>(`/api/v1/songs/${songId}`, {
+      method: "PUT",
+      token,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }),
+  searchMusic: (token: string, query: string) =>
+    request<MusicSearchResult[]>(`/api/v1/music/search?q=${encodeURIComponent(query)}`, { token }),
+  importMusicUrl: (
+    token: string,
+    payload: {
+      url: string;
+      title?: string;
+      artist?: string;
+      album?: string;
+      language?: string;
+      rights_confirmed: boolean;
+    }
+  ) =>
+    request<Song>("/api/v1/music/import-url", {
+      method: "POST",
+      token,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }),
   getJobs: (token: string) => request<Job[]>("/api/v1/jobs", { token }),
   getJob: (token: string, jobId: string | number) =>
     request<Job>(`/api/v1/jobs/${jobId}`, { token }),

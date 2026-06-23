@@ -6,8 +6,15 @@ pydantic==2.12.5
 pydantic-settings==2.12.0
 psycopg[binary]==3.3.3
 orjson==3.11.7
-audio-separator==0.41.1
+audio-separator==0.44.2
 faster-whisper==1.2.1
+httpx[http2]>=0.28.1
+aiofiles>=23.2.1
+tenacity>=8.3.0
+mutagen>=1.47.0
+pycryptodome>=3.20.0
+yt-dlp>=2024.04.09
+python-dotenv>=1.0.0
 
 # WhisperX is intentionally not pinned here for Python 3.13/3.14 because its current release
 # forces faster-whisper==1.0.0, which in turn pulls a tokenizers build that often falls back

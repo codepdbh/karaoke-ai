@@ -1,32 +1,39 @@
 import Image from "next/image";
 
-import { LoginForm } from "@/features/auth/login-form";
+import { UserAccessForm } from "@/features/auth/user-access-form";
+import { withAppBasePath } from "@/lib/runtime-urls";
 
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-black/20 p-4 backdrop-blur md:grid md:grid-cols-[1.1fr_0.9fr] md:p-6">
-        <section className="rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.01] p-8">
-          <div className="relative inline-flex items-center justify-center rounded-3xl border border-white/20 bg-black/35 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_0_40px_rgba(34,211,238,0.2)] backdrop-blur">
-            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_30%_25%,rgba(34,211,238,0.28),transparent_55%),radial-gradient(circle_at_75%_80%,rgba(249,115,22,0.25),transparent_58%)]" />
+      <div className="grid w-full max-w-5xl gap-8 md:grid-cols-[1fr_420px] md:items-center">
+        <section className="max-w-xl">
+          <div className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] p-3 shadow-panel">
             <Image
-              src="/logo.png"
+              src={withAppBasePath("/logo.png")}
               alt="Karaoke AI logo"
               width={104}
               height={104}
-              className="relative h-[104px] w-[104px] rounded-2xl object-cover"
+              className="h-20 w-20 rounded-md object-cover sm:h-24 sm:w-24"
               priority
             />
           </div>
-          <p className="mt-4 text-xs uppercase tracking-[0.32em] text-white/40">karaoke-ai</p>
-          <h1 className="mt-4 text-4xl font-semibold text-white md:text-5xl">Estudio local de karaoke</h1>
-          <p className="mt-4 max-w-md text-sm leading-7 text-white/60">
-            Sube canciones, separa stems, sincroniza letras y ajusta tiempos en un solo flujo. Todo
-            corre en tu servidor con procesamiento local y control completo de tus pistas.
+          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/70">karaoke-ai</p>
+          <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">
+            Tu sala de karaoke, sin menus raros.
+          </h1>
+          <p className="mt-4 max-w-lg text-base leading-7 text-white/60">
+            Entra, sube una cancion, procesa la pista y canta con letras grandes. Si tu cuenta es
+            administradora, el panel de usuarios aparece automaticamente.
           </p>
+          <div className="mt-7 grid gap-3 text-sm text-white/70 sm:grid-cols-3">
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">Sube audio</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">Sincroniza letras</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">Canta en pantalla</div>
+          </div>
         </section>
-        <section className="flex items-center justify-center p-4 md:p-6">
-          <LoginForm />
+        <section className="flex items-center justify-center">
+          <UserAccessForm />
         </section>
       </div>
     </main>

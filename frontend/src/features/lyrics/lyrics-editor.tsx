@@ -40,12 +40,13 @@ function translateLyricsStatus(status: string) {
 }
 
 export function LyricsEditor({ versionId }: LyricsEditorProps) {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [songId, setSongId] = useState<number>(demoLyrics.song_id);
   const [lines, setLines] = useState<EditableLine[]>(demoLyrics.lines);
   const [versionName, setVersionName] = useState("Version editada");
   const [statusLabel, setStatusLabel] = useState("draft");
   const [message, setMessage] = useState<string | null>(null);
+  const [songOwnerId, setSongOwnerId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -77,19 +78,46 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
                 }))
             }))
         );
+        return apiClient.getSong(token, version.song_id);
       })
+      .then((song) => setSongOwnerId(song.created_by))
       .catch(() => undefined);
   }, [token, versionId]);
 
   const totalDuration = useMemo(() => lines.reduce((max, line) => Math.max(max, line.end), 0), [lines]);
+  const canEdit = user?.role === "admin" || user?.id === songOwnerId;
 
   const updateLine = (index: number, patch: Partial<EditableLine>) => {
+    if (!canEdit) {
+      return;
+    }
     setLines((current) =>
       current.map((line) => (line.line_index === index ? { ...line, ...patch } : line))
     );
   };
 
+  const updateWord = (lineIndex: number, wordIndex: number, patch: Partial<EditableWord>) => {
+    if (!canEdit) {
+      return;
+    }
+    setLines((current) =>
+      current.map((line) =>
+        line.line_index === lineIndex
+          ? {
+              ...line,
+              words: line.words.map((word) =>
+                word.word_index === wordIndex ? { ...word, ...patch } : word
+              )
+            }
+          : line
+      )
+    );
+  };
+
   const applyOffset = (delta: number) => {
+    if (!canEdit) {
+      return;
+    }
     setLines((current) =>
       current.map((line) => ({
         ...line,
@@ -109,6 +137,10 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
       setMessage("Necesitas una sesion activa para guardar cambios.");
       return;
     }
+    if (!canEdit) {
+      setMessage("Solo el propietario o un admin pueden editar esta letra.");
+      return;
+    }
     try {
       const updated = await apiClient.updateLyricsVersion(token, versionId, {
         version_name: versionName,
@@ -124,6 +156,10 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
   const saveNewVersion = async () => {
     if (!token) {
       setMessage("Necesitas una sesion activa para crear una nueva version.");
+      return;
+    }
+    if (!canEdit) {
+      setMessage("Solo el propietario o un admin pueden crear versiones nuevas.");
       return;
     }
     try {
@@ -143,6 +179,10 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
   const publishVersion = async () => {
     if (!token) {
       setMessage("Necesitas una sesion activa para publicar.");
+      return;
+    }
+    if (!canEdit) {
+      setMessage("Solo el propietario o un admin pueden publicar esta letra.");
       return;
     }
     try {
@@ -174,36 +214,46 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
           <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
             <button
               onClick={() => applyOffset(-0.1)}
+              disabled={!canEdit}
               className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Offset -0.10
             </button>
             <button
               onClick={() => applyOffset(0.1)}
+              disabled={!canEdit}
               className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/75 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Offset +0.10
             </button>
             <button
               onClick={saveVersion}
+              disabled={!canEdit}
               className="w-full rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400 sm:w-auto"
             >
               Guardar cambios
             </button>
             <button
               onClick={saveNewVersion}
+              disabled={!canEdit}
               className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition hover:bg-white/[0.04] sm:w-auto"
             >
               Guardar como nueva version
             </button>
             <button
               onClick={publishVersion}
+              disabled={!canEdit}
               className="w-full rounded-2xl border border-neon-500/30 bg-neon-500/10 px-4 py-3 text-sm text-white transition hover:bg-neon-500/15 sm:w-auto"
             >
               Publicar
             </button>
           </div>
         </div>
+        {!canEdit ? (
+          <p className="mt-4 text-sm text-white/55">
+            Vista de solo lectura. Solo el propietario de la cancion o un admin pueden editar esta letra.
+          </p>
+        ) : null}
         {message ? <p className="mt-4 text-sm text-white/70">{message}</p> : null}
       </section>
 
@@ -215,6 +265,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
           <input
             value={versionName}
             onChange={(event) => setVersionName(event.target.value)}
+            disabled={!canEdit}
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
           />
         </label>
@@ -231,6 +282,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
                 <input
                   value={line.text}
                   onChange={(event) => updateLine(line.line_index, { text: event.target.value })}
+                  disabled={!canEdit}
                   className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
                 />
               </label>
@@ -245,6 +297,7 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
                   onChange={(event) =>
                     updateLine(line.line_index, { start: Number(event.target.value) || 0 })
                   }
+                  disabled={!canEdit}
                   className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
                 />
               </label>
@@ -259,20 +312,74 @@ export function LyricsEditor({ versionId }: LyricsEditorProps) {
                   onChange={(event) =>
                     updateLine(line.line_index, { end: Number(event.target.value) || 0 })
                   }
+                  disabled={!canEdit}
                   className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
                 />
               </label>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {line.words.map((word) => (
-                <span
-                  key={`${line.line_index}-${word.word_index}`}
-                  className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/60"
-                >
-                  {word.text} ({word.start.toFixed(2)}-{word.end.toFixed(2)})
-                </span>
-              ))}
-            </div>
+            {line.words.length > 0 ? (
+              <div className="mt-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Palabras</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {line.words.map((word) => (
+                    <div
+                      key={`${line.line_index}-${word.word_index}`}
+                      className="rounded-2xl border border-white/10 bg-black/20 p-3"
+                    >
+                      <label className="block">
+                        <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.18em] text-white/35">
+                          Palabra
+                        </span>
+                        <input
+                          value={word.text}
+                          onChange={(event) =>
+                            updateWord(line.line_index, word.word_index, { text: event.target.value })
+                          }
+                          disabled={!canEdit}
+                          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white"
+                        />
+                      </label>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.18em] text-white/35">
+                            Inicio
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={word.start}
+                            onChange={(event) =>
+                              updateWord(line.line_index, word.word_index, {
+                                start: Number(event.target.value) || 0
+                              })
+                            }
+                            disabled={!canEdit}
+                            className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.18em] text-white/35">
+                            Fin
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={word.end}
+                            onChange={(event) =>
+                              updateWord(line.line_index, word.word_index, {
+                                end: Number(event.target.value) || 0
+                              })
+                            }
+                            disabled={!canEdit}
+                            className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ))}
       </section>

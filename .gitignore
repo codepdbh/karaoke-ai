@@ -23,4 +23,4 @@ workers/.pytest_cache/
 workers/.mypy_cache/
 postgres-data/
 redis-data/
-
+backups/

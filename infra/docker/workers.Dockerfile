@@ -6,6 +6,10 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt /tmp/backend-requirements.txt
 COPY workers/requirements.txt /tmp/worker-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt -r /tmp/worker-requirements.txt

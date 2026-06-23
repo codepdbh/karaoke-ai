@@ -4,8 +4,9 @@
 
 :root {
   color-scheme: dark;
-  --bg-0: #09090f;
-  --bg-1: #10101a;
+  --bg-0: #0b0d0f;
+  --bg-1: #151816;
+  --bg-2: #1b1612;
   --line: rgba(255, 255, 255, 0.08);
   --text: rgba(255, 255, 255, 0.92);
 }
@@ -20,11 +21,10 @@ body {
   margin: 0;
   padding: 0;
   background:
-    radial-gradient(circle at 15% 15%, rgba(249, 115, 22, 0.12), transparent 32%),
-    radial-gradient(circle at 88% 12%, rgba(34, 211, 238, 0.12), transparent 28%),
-    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 48%, var(--bg-0) 100%);
+    linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, transparent 34%),
+    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 48%, var(--bg-2) 100%);
   color: var(--text);
-  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI Variable Display", sans-serif;
+  font-family: "Aptos", "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 body::before {
@@ -37,6 +37,14 @@ body::before {
     linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size: 28px 28px;
   opacity: 0.45;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.2));
 }
 
 a {
@@ -52,5 +60,13 @@ select {
 }
 
 ::selection {
-  background: rgba(34, 211, 238, 0.22);
+  background: rgba(52, 211, 153, 0.25);
+}
+
+* {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+input[type="range"] {
+  min-height: 1.5rem;
 }
