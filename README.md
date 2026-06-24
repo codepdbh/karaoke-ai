@@ -297,7 +297,7 @@ $auth = Invoke-RestMethod `
   -Method POST `
   -Uri "http://localhost:8000/api/v1/auth/login" `
   -ContentType "application/json" `
-  -Body '{"email":"admin@example.com","password":"D4niel123"}'
+  -Body '{"email":"admin@example.com","password":"your-password"}'
 
 $token = $auth.access_token
 $token

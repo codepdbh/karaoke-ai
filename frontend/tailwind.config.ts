@@ -6,20 +6,21 @@ const config: Config = {
     extend: {
       colors: {
         base: {
-          950: "#09090f",
-          900: "#11111a",
-          800: "#171726"
+          950: "#0b0d0f",
+          900: "#121614",
+          800: "#1c211d"
         },
         accent: {
-          500: "#f97316",
-          400: "#fb923c"
+          500: "#f59e0b",
+          400: "#fbbf24"
         },
         neon: {
-          500: "#22d3ee"
+          500: "#34d399"
         }
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(34, 211, 238, 0.16), 0 18px 60px rgba(9, 9, 15, 0.35)"
+        glow: "0 0 0 1px rgba(52, 211, 153, 0.16), 0 18px 60px rgba(0, 0, 0, 0.35)",
+        panel: "0 18px 60px rgba(0, 0, 0, 0.26)"
       }
     }
   },
@@ -27,4 +28,3 @@ const config: Config = {
 };
 
 export default config;
-

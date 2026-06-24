@@ -1,8 +1,16 @@
 export type User = {
   id: number;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
   username: string;
   role: string;
+  auth_provider: string;
+  credits_remaining: number;
+};
+
+export type AdminUser = User & {
+  password_enabled: boolean;
 };
 
 export type SongFile = {
@@ -102,3 +110,18 @@ export type Job = {
   updated_at: string;
 };
 
+export type MusicSearchResult = {
+  source_id: string;
+  source_label: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  year: string | null;
+  license_url: string | null;
+  duration_seconds: number | null;
+  download_url: string;
+  filename: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  cover_url: string | null;
+};

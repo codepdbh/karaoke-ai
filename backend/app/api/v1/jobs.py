@@ -16,9 +16,9 @@ router = APIRouter(tags=["jobs"])
 def process_song(
     song_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> JobRead:
-    job = JobService(db).create_song_processing_job(song_id)
+    job = JobService(db).create_song_processing_job(song_id, current_user)
     return JobRead.model_validate(job)
 
 
@@ -37,4 +37,3 @@ def list_jobs(
     _: User = Depends(get_current_user),
 ) -> list[JobRead]:
     return [JobRead.model_validate(job) for job in JobService(db).list()]
-

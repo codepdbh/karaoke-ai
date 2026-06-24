@@ -19,3 +19,8 @@ class UserRepository:
     def get_by_id(self, user_id: int) -> User | None:
         return self.session.get(User, user_id)
 
+    def get_by_google_sub(self, google_sub: str) -> User | None:
+        return self.session.scalar(select(User).where(User.google_sub == google_sub))
+
+    def list(self) -> list[User]:
+        return list(self.session.scalars(select(User).order_by(User.created_at.desc())))

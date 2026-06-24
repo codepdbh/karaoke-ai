@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.app.models.enums import SongFileType, SongStatus
+from backend.app.models.enums import SongFileType, SongSourceType, SongStatus, UserRole
 from backend.app.models.song import Song, SongFile
 from backend.app.models.user import User
 from backend.app.repositories.song import SongRepository
@@ -38,6 +38,7 @@ class SongService:
         album: str | None = None,
         language: str | None = None,
         max_size_bytes: int,
+        source_type: SongSourceType = SongSourceType.upload,
     ) -> Song:
         if len(content) == 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty upload")
@@ -58,6 +59,7 @@ class SongService:
             album=sanitize_text(album) if album else None,
             language=language,
             status=SongStatus.uploaded,
+            source_type=source_type,
             audio_fingerprint=fingerprint,
             created_by=current_user.id,
         )
@@ -90,8 +92,18 @@ class SongService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Song not found")
         return song
 
-    def delete(self, song_id: int) -> None:
+    def assert_can_manage(self, song: Song, current_user: User) -> None:
+        if current_user.role == UserRole.admin:
+            return
+        if song.created_by != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para modificar esta cancion",
+            )
+
+    def delete(self, song_id: int, current_user: User) -> None:
         song = self.get_or_404(song_id)
+        self.assert_can_manage(song, current_user)
         self.storage.delete_tree(f"songs/{song_id}")
         self.session.delete(song)
         self.session.commit()
@@ -101,7 +113,9 @@ class SongService:
         if not song_file:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not available")
         path = self.storage.resolve(song_file.storage_path)
+        stream_path = path.with_suffix(".mp3")
+        if stream_path.exists():
+            return stream_path
         if not path.exists():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage file missing")
         return path
-

@@ -1,18 +1,53 @@
+"use client";
+
 import type { PropsWithChildren } from "react";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/topbar";
+import { apiClient } from "@/lib/api-client";
+import { useAuthStore } from "@/store/auth-store";
 
 export function AppShell({ children }: PropsWithChildren) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { token, user, hydrated, setUser, clearSession } = useAuthStore();
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    apiClient
+      .me(token)
+      .then((nextUser) => {
+        setUser(nextUser);
+        if (pathname.startsWith("/admin") && nextUser.role !== "admin") {
+          router.replace("/dashboard");
+        }
+      })
+      .catch(() => {
+        clearSession();
+        router.replace("/login");
+      });
+  }, [clearSession, hydrated, pathname, router, setUser, token]);
+
+  if (!hydrated || !token || !user) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.14),_transparent_30%),radial-gradient(circle_at_top_left,_rgba(249,115,22,0.18),_transparent_28%),linear-gradient(180deg,#09090f_0%,#10101a_45%,#0b0b12_100%)] text-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-3 sm:gap-6 sm:p-4 md:flex-row md:p-6">
+    <div className="min-h-screen text-white">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:px-4 md:flex-row md:px-6 md:py-6">
         <Sidebar />
-        <main className="flex-1 space-y-6">
+        <main className="min-w-0 flex-1 space-y-4">
           <TopBar />
-          <div className="rounded-[1.5rem] border border-white/10 bg-black/15 p-3 sm:rounded-[2rem] sm:p-4 md:p-6">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>

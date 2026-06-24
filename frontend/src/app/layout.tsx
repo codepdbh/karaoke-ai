@@ -1,11 +1,47 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { getAppBasePath, withAppBasePath } from "@/lib/runtime-urls";
+
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://rutasingluten.lat";
+const appBasePath = getAppBasePath();
+const canonicalUrl = `${siteUrl}${appBasePath || ""}/`;
+const ogImageUrl = `${siteUrl}${withAppBasePath("/logo.png")}`;
+
 export const metadata: Metadata = {
-  title: "karaoke-ai",
-  description: "Local karaoke studio for stem separation, lyrics sync and playback."
+  metadataBase: new URL(siteUrl),
+  title: "Karaoke IA",
+  description: "Crea pistas karaoke, sincroniza letras y reproduce tus canciones desde el navegador.",
+  alternates: {
+    canonical: canonicalUrl
+  },
+  openGraph: {
+    type: "website",
+    url: canonicalUrl,
+    title: "Karaoke IA",
+    description: "Crea pistas karaoke, sincroniza letras y reproduce tus canciones desde el navegador.",
+    siteName: "Karaoke IA",
+    images: [
+      {
+        url: ogImageUrl,
+        width: 1024,
+        height: 1024,
+        alt: "Logo de Karaoke IA"
+      }
+    ]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Karaoke IA",
+    description: "Crea pistas karaoke, sincroniza letras y reproduce tus canciones desde el navegador.",
+    images: [ogImageUrl]
+  },
+  icons: {
+    icon: withAppBasePath("/logo.png"),
+    apple: withAppBasePath("/logo.png")
+  }
 };
 
 type RootLayoutProps = {

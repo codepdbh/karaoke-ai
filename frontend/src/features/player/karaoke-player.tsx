@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiClient } from "@/lib/api-client";
 import { demoLyrics } from "@/lib/demo-data";
+import { getApiBaseUrl } from "@/lib/runtime-urls";
 import { useAuthStore } from "@/store/auth-store";
-import type { LyricsPayload, SongDetail } from "@/types/api";
+import type { LyricsLine, LyricsPayload, SongDetail } from "@/types/api";
 
 type StemTrack = "original" | "instrumental" | "vocals";
 type PlaybackMode = "mix" | StemTrack;
@@ -16,7 +17,6 @@ type KaraokePlayerProps = {
   songId: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const EMPTY_AUDIO_SOURCES: AudioSources = {
   original: null,
   instrumental: null,
@@ -50,8 +50,6 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
   const instrumentalAudioRef = useRef<HTMLAudioElement | null>(null);
   const vocalAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlsRef = useRef<AudioSources>(EMPTY_AUDIO_SOURCES);
-  const lyricsViewportRef = useRef<HTMLDivElement | null>(null);
-  const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const activeLineIndex = useMemo(
     () =>
@@ -130,7 +128,7 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
     let active = true;
 
     const loadTrack = async (track: StemTrack) => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/songs/${songId}/stream/${track}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/songs/${songId}/stream/${track}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -263,29 +261,6 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
     return () => window.clearInterval(interval);
   }, [isPlaying, playbackMode]);
 
-  useEffect(() => {
-    if (activeLineIndex < 0) {
-      return;
-    }
-
-    const container = lyricsViewportRef.current;
-    const lineNode = lineRefs.current[activeLineIndex];
-
-    if (!container || !lineNode) {
-      return;
-    }
-
-    const containerRect = container.getBoundingClientRect();
-    const lineRect = lineNode.getBoundingClientRect();
-    const topDelta =
-      lineRect.top - containerRect.top - container.clientHeight / 2 + lineNode.clientHeight / 2;
-
-    container.scrollTo({
-      top: container.scrollTop + topDelta,
-      behavior: "smooth"
-    });
-  }, [activeLineIndex]);
-
   const updateTimeFromPrimary = (event: React.SyntheticEvent<HTMLAudioElement>) => {
     if (event.currentTarget !== getPrimaryAudioElement(playbackMode)) {
       return;
@@ -356,114 +331,187 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
   };
 
   const mixReady = Boolean(audioSources.instrumental || audioSources.vocals);
-  const primaryLabel =
-    playbackMode === "mix" ? "vocal + instrumental" : playbackMode;
+  const modeLabels: Record<PlaybackMode, string> = {
+    mix: "Karaoke",
+    original: "Original",
+    instrumental: "Instrumental",
+    vocals: "Voz"
+  };
+  const primaryLabel = modeLabels[playbackMode];
   const songTitle = songDetail?.title?.trim() || `Cancion #${songId}`;
   const songArtist = songDetail?.artist?.trim() || "Artista pendiente";
+  const upcomingLineIndex = lyrics.lines.findIndex((line) => currentTime < line.end);
+  const focusLineIndex = activeLineIndex >= 0 ? activeLineIndex : Math.max(0, upcomingLineIndex);
+  const visibleStartIndex = Math.max(
+    0,
+    Math.min(focusLineIndex - 1, Math.max(0, lyrics.lines.length - 3))
+  );
+  const visibleLines = lyrics.lines.slice(visibleStartIndex, visibleStartIndex + 3);
+  const getActiveWordIndex = (line: LyricsLine) => {
+    const exactIndex = line.words.findIndex((word) => currentTime >= word.start && currentTime <= word.end);
+
+    if (exactIndex >= 0) {
+      return exactIndex;
+    }
+
+    for (let wordIndex = line.words.length - 1; wordIndex >= 0; wordIndex -= 1) {
+      if (currentTime >= line.words[wordIndex].start && currentTime <= line.end) {
+        return wordIndex;
+      }
+    }
+
+    return -1;
+  };
+  const renderTimedWords = (line: LyricsLine) => {
+    if (line.words.length === 0) {
+      return line.text;
+    }
+
+    const activeWordIndex = getActiveWordIndex(line);
+
+    return (
+      <span className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+        {line.words.map((word, wordIndex) => {
+          const wordActive = wordIndex === activeWordIndex;
+          const baseClass = "inline-block rounded-md px-2 py-1 transition";
+          const activeClass = "scale-105 bg-emerald-200 text-black shadow-[0_0_26px_rgba(110,231,183,0.45)]";
+          const inactiveClass = "text-inherit";
+
+          return (
+            <span
+              key={`${line.line_index}-${word.word_index}`}
+              className={`${baseClass} ${wordActive ? activeClass : inactiveClass}`}
+            >
+              {word.text}
+            </span>
+          );
+        })}
+      </span>
+    );
+  };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-white/40">Player</p>
-        <h3 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Karaoke playback</h3>
-        <p className="mt-2 text-sm text-white/60">
-          {songTitle} | {songArtist}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          {(["mix", "original", "instrumental", "vocals"] as PlaybackMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => handleModeChange(mode)}
-              disabled={mode === "mix" ? !mixReady : !audioSources[mode]}
-              className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                playbackMode === mode
-                  ? "bg-accent-500 text-black"
-                  : "border border-white/10 bg-black/20 text-white/70 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-40"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
+    <div className="space-y-4">
+      <section className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-panel sm:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/70">Modo cantar</p>
+            <h3 className="mt-2 truncate text-2xl font-semibold text-white sm:text-3xl">{songTitle}</h3>
+            <p className="mt-1 text-sm text-white/60">{songArtist}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["mix", "original", "instrumental", "vocals"] as PlaybackMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleModeChange(mode)}
+                disabled={mode === "mix" ? !mixReady : !audioSources[mode]}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                  playbackMode === mode
+                    ? "bg-emerald-300 text-black"
+                    : "border border-white/10 bg-black/25 text-white/70 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+                }`}
+              >
+                {modeLabels[mode]}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-black/25 p-4 sm:p-6">
-          <div className="mb-6 h-32 rounded-3xl bg-[linear-gradient(90deg,rgba(249,115,22,0.25)_0%,rgba(34,211,238,0.2)_100%)] p-4">
-            <div className="flex h-full items-end gap-2">
-              {lyrics.lines.slice(0, 14).map((line) => (
+        <div className="mt-5 rounded-lg border border-white/10 bg-black/[0.28] px-4 py-6 sm:px-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/40">Letra en movimiento</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/35">3 lineas</p>
+          </div>
+          <div className="space-y-3 text-center">
+            {visibleLines.map((line, visibleIndex) => {
+              const absoluteIndex = visibleStartIndex + visibleIndex;
+              const active = absoluteIndex === activeLineIndex;
+
+              return (
                 <div
                   key={line.line_index}
-                  className={`w-full rounded-full transition ${
-                    activeLineIndex === line.line_index ? "bg-white" : "bg-white/50"
+                  aria-current={active ? "true" : undefined}
+                  className={`rounded-lg border px-4 py-4 transition ${
+                    active
+                      ? "border-emerald-300/40 bg-emerald-300/[0.12] shadow-glow"
+                      : "border-white/10 bg-white/[0.03]"
                   }`}
-                  style={{ height: `${24 + Math.min(Math.round((line.end - line.start) * 12), 84)}px` }}
-                />
-              ))}
+                >
+                  <p
+                    className={`mx-auto max-w-5xl font-semibold leading-tight transition ${
+                      active
+                        ? "text-2xl text-white sm:text-4xl lg:text-5xl"
+                        : "text-base text-emerald-100/70 sm:text-xl"
+                    }`}
+                  >
+                    {active ? renderTimedWords(line) : line.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-lg border border-white/10 bg-base-900/70 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={handlePlayPause}
+              className="rounded-md bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
+            >
+              {isPlaying ? "Pausar" : "Reproducir"}
+            </button>
+            <div className="text-sm font-medium text-white/70">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+            <div className="rounded-md border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/50 sm:ml-auto">
+              {primaryLabel}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handlePlayPause}
-                className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
-              >
-                {isPlaying ? "Pause" : "Play"}
-              </button>
-              <div className="text-sm text-white/70">
-                {formatTime(currentTime)} / {formatTime(duration)}
+          <input
+            type="range"
+            min={0}
+            max={Math.max(duration, 0)}
+            step={0.01}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(event) => handleSeek(Number(event.target.value))}
+            className="mt-4 w-full cursor-pointer accent-emerald-300"
+          />
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.12em] text-white/45">
+                <span>Voz</span>
+                <span>{Math.round(vocalVolume * 100)}%</span>
               </div>
-              <div className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.2em] text-white/45">
-                {primaryLabel}
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={vocalVolume}
+                onChange={(event) => setVocalVolume(Number(event.target.value))}
+                className="mt-2 w-full cursor-pointer accent-emerald-300"
+              />
+            </label>
+
+            <label className="block">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.12em] text-white/45">
+                <span>Instrumental</span>
+                <span>{Math.round(instrumentalVolume * 100)}%</span>
               </div>
-            </div>
-
-            <input
-              type="range"
-              min={0}
-              max={Math.max(duration, 0)}
-              step={0.01}
-              value={Math.min(currentTime, duration || 0)}
-              onChange={(event) => handleSeek(Number(event.target.value))}
-              className="mt-4 h-2 w-full cursor-pointer accent-accent-500"
-            />
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/45">
-                  <span>Vocal volume</span>
-                  <span>{Math.round(vocalVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={vocalVolume}
-                  onChange={(event) => setVocalVolume(Number(event.target.value))}
-                  className="mt-3 h-2 w-full cursor-pointer accent-neon-500"
-                />
-              </label>
-
-              <label className="block">
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/45">
-                  <span>Instrumental volume</span>
-                  <span>{Math.round(instrumentalVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={instrumentalVolume}
-                  onChange={(event) => setInstrumentalVolume(Number(event.target.value))}
-                  className="mt-3 h-2 w-full cursor-pointer accent-accent-500"
-                />
-              </label>
-            </div>
-
-            <p className="mt-4 text-xs text-white/45">
-              Mix mode plays vocals and instrumental together. Use the two sliders to balance the karaoke blend.
-            </p>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={instrumentalVolume}
+                onChange={(event) => setInstrumentalVolume(Number(event.target.value))}
+                className="mt-2 w-full cursor-pointer accent-amber-300"
+              />
+            </label>
           </div>
         </div>
 
@@ -493,58 +541,6 @@ export function KaraokePlayer({ songId }: KaraokePlayerProps) {
         />
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-white/40">Lyrics</p>
-            <h4 className="mt-2 text-xl font-semibold text-white">Synced lines</h4>
-          </div>
-          <p className="text-xs uppercase tracking-[0.24em] text-white/35">Auto scroll live</p>
-        </div>
-        <div ref={lyricsViewportRef} className="mt-5 max-h-[24rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[32rem]">
-          {lyrics.lines.map((line, index) => {
-            const active = index === activeLineIndex;
-            return (
-              <div
-                key={line.line_index}
-                ref={(node) => {
-                  lineRefs.current[index] = node;
-                }}
-                className={`rounded-3xl border px-4 py-4 transition ${
-                  active
-                    ? "border-neon-500/30 bg-neon-500/10 shadow-glow"
-                    : "border-white/10 bg-black/20"
-                }`}
-              >
-                <div className="flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center sm:gap-4">
-                  <p className={`text-base ${active ? "text-white" : "text-white/72"}`}>{line.text}</p>
-                  <p className="text-xs text-white/35">
-                    {line.start.toFixed(2)} - {line.end.toFixed(2)}
-                  </p>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-white/45">
-                  {line.words.map((word) => {
-                    const wordActive = currentTime >= word.start && currentTime <= word.end;
-
-                    return (
-                      <span
-                        key={`${line.line_index}-${word.word_index}`}
-                        className={`rounded-full border px-2 py-1 transition ${
-                          wordActive
-                            ? "border-white/40 bg-white/10 text-white"
-                            : "border-white/10 text-white/45"
-                        }`}
-                      >
-                        {word.text}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }

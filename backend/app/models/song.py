@@ -29,7 +29,7 @@ class Song(TimestampMixin, Base):
         nullable=False,
     )
     source_type: Mapped[SongSourceType] = mapped_column(
-        Enum(SongSourceType, name="song_source_type"),
+        Enum(SongSourceType, name="song_source_type", values_callable=lambda x: [e.value for e in x]),
         default=SongSourceType.upload,
         nullable=False,
     )

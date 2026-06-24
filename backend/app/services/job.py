@@ -5,10 +5,12 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import get_settings
-from backend.app.models.enums import JobStatus, JobType, SongStatus
+from backend.app.models.enums import JobStatus, JobType, SongStatus, UserRole
 from backend.app.models.job import Job
+from backend.app.models.user import User
 from backend.app.repositories.job import JobRepository
 from backend.app.repositories.song import SongRepository
+from backend.app.services.song import SongService
 
 
 def build_celery_client() -> Celery:
@@ -21,6 +23,7 @@ class JobService:
         self.session = session
         self.jobs = JobRepository(session)
         self.songs = SongRepository(session)
+        self.song_service = SongService(session)
         self.celery_client = build_celery_client()
 
     def list(self) -> list[Job]:
@@ -32,7 +35,7 @@ class JobService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajo no encontrado")
         return job
 
-    def create_song_processing_job(self, song_id: int) -> Job:
+    def create_song_processing_job(self, song_id: int, current_user: User) -> Job:
         song = self.songs.get(song_id)
         if not song:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cancion no encontrada")
@@ -43,6 +46,16 @@ class JobService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"La cancion ya tiene un trabajo activo #{active_job.id}",
             )
+
+        self.song_service.assert_can_manage(song, current_user)
+
+        if current_user.role != UserRole.admin:
+            if current_user.credits_remaining <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes creditos disponibles para procesar otra cancion",
+                )
+            current_user.credits_remaining -= 1
 
         song.status = SongStatus.processing
         job = Job(

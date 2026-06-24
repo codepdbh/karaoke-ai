@@ -9,6 +9,11 @@ class UserRole(str, Enum):
     listener = "listener"
 
 
+class AuthProvider(str, Enum):
+    google = "google"
+    local = "local"
+
+
 class SongStatus(str, Enum):
     uploaded = "uploaded"
     processing = "processing"
@@ -64,4 +69,3 @@ class JobStatus(str, Enum):
     completed = "completed"
     failed = "failed"
     cancelled = "cancelled"
-

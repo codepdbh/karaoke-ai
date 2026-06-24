@@ -1,15 +1,26 @@
 version: "3.9"
 
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ../docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
   frontend:
     build:
       context: ../..
       dockerfile: infra/docker/frontend.Dockerfile
     working_dir: /app/frontend
-    command: sh -lc "npm install && npm run dev -- --hostname 0.0.0.0"
+    command: sh -lc "npm install --include=dev && npm run build && npm run start -- --hostname 0.0.0.0 --port 3000"
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-      NEXT_PUBLIC_WS_BASE_URL: ws://localhost:8000
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_BASE_PATH: /karaoke-ia
     ports:
       - "3000:3000"
     volumes:
@@ -17,19 +28,20 @@ services:
       - frontend_node_modules:/app/frontend/node_modules
     depends_on:
       - backend
+    restart: unless-stopped
 
   backend:
     build:
       context: ../..
       dockerfile: infra/docker/backend.Dockerfile
     working_dir: /app
-    command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment:
       APP_NAME: karaoke-ai-api
-      APP_ENV: development
-      SECRET_KEY: change-me
+      APP_ENV: production
+      SECRET_KEY: ${KARAOKE_SECRET_KEY:-change-me}
       JWT_ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+      ACCESS_TOKEN_EXPIRE_MINUTES: 43200
       DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
       REDIS_URL: redis://redis:6379/0
       STORAGE_MODE: local
@@ -55,6 +67,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
 
   workers:
     build:
@@ -64,10 +77,10 @@ services:
     command: python -m celery -A workers.app.celery_app:celery_app worker --loglevel=info
     environment:
       APP_NAME: karaoke-ai-worker
-      APP_ENV: development
-      SECRET_KEY: change-me
+      APP_ENV: production
+      SECRET_KEY: ${KARAOKE_SECRET_KEY:-change-me}
       JWT_ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+      ACCESS_TOKEN_EXPIRE_MINUTES: 43200
       DATABASE_URL: postgresql+psycopg://karaoke:karaoke@postgres:5432/karaoke_ai
       REDIS_URL: redis://redis:6379/0
       STORAGE_MODE: local
@@ -89,6 +102,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
@@ -105,6 +119,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -113,6 +128,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
 
   # minio:
   #   image: minio/minio:latest

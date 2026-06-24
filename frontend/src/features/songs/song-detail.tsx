@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { StatusBadge } from "@/components/status-badge";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -74,57 +75,99 @@ function formatDate(dateValue: string | null | undefined) {
 }
 
 export function SongDetailView({ songId }: SongDetailViewProps) {
-  const { token } = useAuthStore();
+  const router = useRouter();
+  const { token, user, setUser } = useAuthStore();
   const [song, setSong] = useState<SongDetail>(demoSongDetail);
   const [versions, setVersions] = useState<LyricsVersion[]>([]);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [queueing, setQueueing] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | number | null>(null);
 
   useEffect(() => {
     if (!token) {
       return;
     }
 
-    apiClient.getSong(token, songId).then(setSong).catch(() => undefined);
-    apiClient.getLyricsVersions(token, songId).then(setVersions).catch(() => undefined);
-  }, [songId, token]);
+    let active = true;
+    const refreshData = () => {
+      apiClient.getSong(token, songId).then((data) => {
+        if (active) setSong(data);
+      }).catch(() => undefined);
+      apiClient.getLyricsVersions(token, songId).then((data) => {
+        if (active) setVersions(data);
+      }).catch(() => undefined);
+    };
 
-  const processButtonLabel = useMemo(() => {
-    if (queueing || song.status === "processing") {
-      return "Procesando...";
-    }
-    if (song.status === "ready") {
-      return "Reprocesar";
-    }
-    return "Procesar";
-  }, [queueing, song.status]);
+    refreshData();
 
-  const triggerProcess = async () => {
-    if (!token) {
-      setStatusMessage("Necesitas una sesion activa para lanzar el procesamiento.");
-      return;
-    }
-
+    let interval: NodeJS.Timeout | null = null;
     if (song.status === "processing") {
-      setStatusMessage("Esta cancion ya esta en proceso. Espera a que termine el job actual.");
+      interval = setInterval(refreshData, 3000);
+    }
+
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
+  }, [songId, token, song.status]);
+
+  useEffect(() => {
+    if (!token || song.status !== "processing") {
       return;
     }
 
-    setQueueing(true);
-    setStatusMessage(null);
+    let active = true;
+    const findActiveJob = async () => {
+      try {
+        const jobs = await apiClient.getJobs(token);
+        if (!active) return;
+
+        const runningJob = jobs.find(
+          (j) => j.song_id === song.id && !["completed", "failed", "cancelled"].includes(j.status)
+        );
+        if (runningJob) {
+          setActiveJobId(runningJob.id);
+        } else {
+          const matchedJob = jobs.find((j) => j.song_id === song.id);
+          if (matchedJob) {
+            setActiveJobId(matchedJob.id);
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    };
+
+    findActiveJob();
+    const interval = setInterval(findActiveJob, 4000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [token, song.status, song.id]);
+
+  const convertSong = async () => {
+    if (!token) {
+      return;
+    }
+
+    setConverting(true);
+    setMessage(null);
 
     try {
       const job = await apiClient.triggerSongProcess(token, songId);
-      setSong((current) => ({ ...current, status: "processing" }));
-      setStatusMessage(`Proceso encolado como trabajo #${job.id}.`);
-    } catch (error) {
-      setStatusMessage(
-        error instanceof ApiError ? error.message : "No se pudo encolar el procesamiento."
-      );
+      if (user && user.role !== "admin") {
+        setUser({ ...user, credits_remaining: Math.max(0, user.credits_remaining - 1) });
+      }
+      router.push(`/jobs/${job.id}`);
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "No se pudo iniciar la conversión.");
     } finally {
-      setQueueing(false);
+      setConverting(false);
     }
   };
+
+  const canManageSong = user?.role === "admin" || user?.id === song.created_by;
 
   return (
     <div className="space-y-6">
@@ -141,33 +184,60 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
               {song.language ?? "Idioma pendiente"}
             </p>
           </div>
-          <div className="grid w-full gap-3 sm:grid-cols-2 xl:w-auto xl:grid-cols-3">
-            <button
-              onClick={triggerProcess}
-              disabled={queueing || song.status === "processing"}
-              className="w-full rounded-2xl bg-accent-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {processButtonLabel}
-            </button>
-            <Link
-              href={`/player/${songId}`}
-              className="w-full rounded-2xl border border-white/10 px-4 py-3 text-center text-sm text-white/80 transition hover:bg-white/[0.04]"
-            >
-              Abrir reproductor
-            </Link>
+          <div className="grid w-full gap-3 sm:grid-cols-2 xl:w-auto">
+            {song.status === "ready" ? (
+              <Link
+                href={`/player/${songId}`}
+                className="w-full rounded-md bg-gradient-to-r from-emerald-300 via-lime-200 to-amber-300 px-6 py-4 text-center text-base font-black tracking-[0.08em] text-black shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_18px_48px_rgba(52,211,153,0.28)] transition hover:scale-[1.02] hover:brightness-110 sm:col-span-2 xl:min-w-[18rem]"
+              >
+                CANTA AHORA
+              </Link>
+            ) : song.status === "processing" ? (
+              activeJobId ? (
+                <Link
+                  href={`/jobs/${activeJobId}`}
+                  className="w-full rounded-md bg-yellow-500 px-6 py-4 text-center text-base font-bold tracking-[0.08em] text-black shadow-[0_0_0_1px_rgba(255,255,255,0.18)] transition hover:scale-[1.02] hover:brightness-110 sm:col-span-2 xl:min-w-[18rem]"
+                >
+                  VER PROGRESO DE CONVERSIÓN
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="w-full rounded-md bg-yellow-500/50 px-6 py-4 text-center text-base font-bold tracking-[0.08em] text-white/50 cursor-not-allowed sm:col-span-2 xl:min-w-[18rem]"
+                >
+                  PROCESANDO KARAOKE...
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                onClick={convertSong}
+                disabled={converting}
+                className="w-full rounded-md bg-gradient-to-r from-emerald-300 via-lime-200 to-amber-300 px-6 py-4 text-center text-base font-black tracking-[0.08em] text-black shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_18px_48px_rgba(52,211,153,0.28)] transition hover:scale-[1.02] hover:brightness-110 disabled:scale-100 disabled:opacity-60 sm:col-span-2 xl:min-w-[18rem]"
+              >
+                {converting ? "INICIANDO..." : "CONVERTIR A KARAOKE AHORA"}
+              </button>
+            )}
             <Link
               href={versions[0] ? `/lyrics/${versions[0].id}` : "#"}
-              className={`w-full rounded-2xl border border-white/10 px-4 py-3 text-center text-sm transition ${
+              className={`w-full rounded-md border border-white/10 px-4 py-3 text-center text-sm transition sm:col-span-2 ${
                 versions[0]
                   ? "text-white/80 hover:bg-white/[0.04]"
                   : "cursor-not-allowed text-white/35"
               }`}
             >
-              Abrir editor
+              {canManageSong ? "Abrir editor" : "Ver letras"}
             </Link>
           </div>
         </div>
-        {statusMessage ? <p className="mt-4 text-sm text-white/70">{statusMessage}</p> : null}
+        {!canManageSong ? (
+          <p className="mt-4 text-sm text-white/55">
+            Puedes reproducir y consultar esta cancion, pero solo su propietario o un admin pueden modificarla.
+          </p>
+        ) : null}
+        {message ? (
+          <p className="mt-4 text-sm text-red-400 font-semibold">{message}</p>
+        ) : null}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -200,7 +270,7 @@ export function SongDetailView({ songId }: SongDetailViewProps) {
           <div className="mt-4 space-y-3">
             {versions.length === 0 ? (
               <p className="text-sm text-white/55">
-                Aun no hay versiones. Procesa la cancion o crea una version manual.
+                Aun no hay versiones de letra para esta cancion.
               </p>
             ) : (
               versions.map((version) => (
